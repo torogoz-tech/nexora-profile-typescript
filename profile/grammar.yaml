@@ -1,0 +1,1311 @@
+schema_version: 4
+max_nesting: 128
+max_steps: 1000000
+file_scope:
+  visibility: whole_scope
+  parent_lookup: false
+  shadowing: nearest
+root_productions:
+- static_module_import
+- function
+- arrow_typed_block
+- arrow_typed_expression
+- arrow_block
+- arrow_expression
+- class_header
+- class
+- interface_header
+- interface
+- enum_header
+- enum
+- type_alias
+- variable_typed
+- variable
+- uninitialized_variable
+- directive
+- destructured_variable
+- export_list
+- expression_statement
+contexts: {}
+groups:
+- open: (
+  close: )
+  kind: delimiter
+- open: '['
+  close: ']'
+  kind: delimiter
+- open: '{'
+  close: '}'
+  kind: delimiter
+ignored:
+- type: literal
+  text: ;
+opaque_references:
+- text: import
+  kind: keyword
+recovery:
+- text: ;
+  kind: delimiter
+recover_line_break: true
+recovery_groups:
+- '{'
+rules:
+  named_binding:
+    type: sequence
+    items:
+    - type: optional
+      item:
+        type: literal
+        text: type
+    - type: sequence
+      items:
+      - type: token
+        kind: identifier
+      - type: optional
+        item:
+          type: sequence
+          items:
+          - type: literal
+            text: as
+          - type: token
+            kind: identifier
+  named:
+    type: sequence
+    items:
+    - type: literal
+      text: '{'
+    - type: optional
+      item:
+        type: sequence
+        items:
+        - type: rule
+          name: named_binding
+        - type: repeat
+          item:
+            type: sequence
+            items:
+            - type: literal
+              text: ','
+            - type: rule
+              name: named_binding
+          min: 0
+          max: 128
+        - type: optional
+          item:
+            type: literal
+            text: ','
+    - type: literal
+      text: '}'
+  namespace:
+    type: sequence
+    items:
+    - type: literal
+      text: '*'
+    - type: literal
+      text: as
+    - type: token
+      kind: identifier
+  bindings:
+    type: choice
+    alternatives:
+    - type: sequence
+      items:
+      - type: token
+        kind: identifier
+      - type: optional
+        item:
+          type: sequence
+          items:
+          - type: literal
+            text: ','
+          - type: choice
+            alternatives:
+            - type: rule
+              name: namespace
+            - type: rule
+              name: named
+    - type: rule
+      name: namespace
+    - type: rule
+      name: named
+  module_source:
+    type: choice
+    alternatives:
+    - type: capture
+      name: source
+      item:
+        type: token
+        kind: string
+      join: ''
+    - type: sequence
+      items:
+      - type: rule
+        name: bindings
+      - type: literal
+        text: from
+      - type: capture
+        name: source
+        item:
+          type: token
+          kind: string
+        join: ''
+  prefix:
+    type: sequence
+    items:
+    - type: optional
+      item:
+        type: literal
+        text: export
+    - type: optional
+      item:
+        type: literal
+        text: default
+    - type: optional
+      item:
+        type: literal
+        text: declare
+    - type: optional
+      item:
+        type: literal
+        text: abstract
+    - type: optional
+      item:
+        type: literal
+        text: async
+productions:
+- name: static_module_import
+  pattern:
+    type: sequence
+    items:
+    - type: literal
+      text: import
+      kind: keyword
+    - type: optional
+      item:
+        type: literal
+        text: type
+    - type: rule
+      name: module_source
+    - type: choice
+      alternatives:
+      - type: literal
+        text: ;
+      - type: line_end
+  projection:
+    ast_kind: module_import
+    role: Reference
+    name_capture: source
+- name: function
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: function
+    - type: optional
+      item:
+        type: literal
+        text: '*'
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: signature
+      item:
+        type: sequence
+        items:
+        - type: sequence
+          items:
+          - type: optional
+            item:
+              type: sequence
+              items:
+              - type: literal
+                text: <
+              - type: scan_until
+                stop:
+                - text: '>'
+              - type: literal
+                text: '>'
+          - type: balanced
+            open: (
+        - type: optional
+          item:
+            type: sequence
+            items:
+            - type: literal
+              text: ':'
+            - type: scan_until
+              stop:
+              - text: '{'
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+  projection:
+    ast_kind: function
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: signature
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: arrow_typed_block
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: const
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: annotation
+      item:
+        type: sequence
+        items:
+        - type: literal
+          text: ':'
+        - type: scan_until
+          stop:
+          - text: '='
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: signature
+      item:
+        type: sequence
+        items:
+        - type: optional
+          item:
+            type: literal
+            text: async
+        - type: choice
+          alternatives:
+          - type: sequence
+            items:
+            - type: optional
+              item:
+                type: sequence
+                items:
+                - type: literal
+                  text: <
+                - type: scan_until
+                  stop:
+                  - text: '>'
+                - type: literal
+                  text: '>'
+            - type: balanced
+              open: (
+          - type: token
+            kind: identifier
+        - type: optional
+          item:
+            type: sequence
+            items:
+            - type: literal
+              text: ':'
+            - type: scan_until
+              stop:
+              - text: =>
+        - type: literal
+          text: =>
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: function
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: annotation
+      trim_start: 0
+      trim_end: 0
+    - capture: signature
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: arrow_typed_expression
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: const
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: annotation
+      item:
+        type: sequence
+        items:
+        - type: literal
+          text: ':'
+        - type: scan_until
+          stop:
+          - text: '='
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: signature
+      item:
+        type: sequence
+        items:
+        - type: optional
+          item:
+            type: literal
+            text: async
+        - type: choice
+          alternatives:
+          - type: sequence
+            items:
+            - type: optional
+              item:
+                type: sequence
+                items:
+                - type: literal
+                  text: <
+                - type: scan_until
+                  stop:
+                  - text: '>'
+                - type: literal
+                  text: '>'
+            - type: balanced
+              open: (
+          - type: token
+            kind: identifier
+        - type: optional
+          item:
+            type: sequence
+            items:
+            - type: literal
+              text: ':'
+            - type: scan_until
+              stop:
+              - text: =>
+        - type: literal
+          text: =>
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: function
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: annotation
+      trim_start: 0
+      trim_end: 0
+    - capture: signature
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 0
+      trim_end: 0
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: arrow_block
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: const
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: signature
+      item:
+        type: sequence
+        items:
+        - type: optional
+          item:
+            type: literal
+            text: async
+        - type: choice
+          alternatives:
+          - type: sequence
+            items:
+            - type: optional
+              item:
+                type: sequence
+                items:
+                - type: literal
+                  text: <
+                - type: scan_until
+                  stop:
+                  - text: '>'
+                - type: literal
+                  text: '>'
+            - type: balanced
+              open: (
+          - type: token
+            kind: identifier
+        - type: optional
+          item:
+            type: sequence
+            items:
+            - type: literal
+              text: ':'
+            - type: scan_until
+              stop:
+              - text: =>
+        - type: literal
+          text: =>
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: function
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: signature
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: arrow_expression
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: const
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: signature
+      item:
+        type: sequence
+        items:
+        - type: optional
+          item:
+            type: literal
+            text: async
+        - type: choice
+          alternatives:
+          - type: sequence
+            items:
+            - type: optional
+              item:
+                type: sequence
+                items:
+                - type: literal
+                  text: <
+                - type: scan_until
+                  stop:
+                  - text: '>'
+                - type: literal
+                  text: '>'
+            - type: balanced
+              open: (
+          - type: token
+            kind: identifier
+        - type: optional
+          item:
+            type: sequence
+            items:
+            - type: literal
+              text: ':'
+            - type: scan_until
+              stop:
+              - text: =>
+        - type: literal
+          text: =>
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: function
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: signature
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 0
+      trim_end: 0
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: class_header
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: class
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: heritage
+      item:
+        type: scan_until
+        stop:
+        - text: '{'
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: class
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: heritage
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: class
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: class
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: class
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: interface_header
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: interface
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: heritage
+      item:
+        type: scan_until
+        stop:
+        - text: '{'
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: interface
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: heritage
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: interface
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: interface
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: interface
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: enum_header
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: enum
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: heritage
+      item:
+        type: scan_until
+        stop:
+        - text: '{'
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: enum
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: heritage
+      trim_start: 0
+      trim_end: 0
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: enum
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: enum
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: body
+      item:
+        type: balanced
+        open: '{'
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: enum
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: body
+      trim_start: 1
+      trim_end: 1
+    scope:
+      visibility: whole_scope
+      parent_lookup: true
+      shadowing: nearest
+- name: type_alias
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: literal
+      text: type
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: definition
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: type_alias
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: definition
+      trim_start: 0
+      trim_end: 0
+- name: variable_typed
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: const
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: capture
+      name: annotation
+      item:
+        type: sequence
+        items:
+        - type: literal
+          text: ':'
+        - type: scan_until
+          stop:
+          - text: '='
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: value
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: variable
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: annotation
+      trim_start: 0
+      trim_end: 0
+    - capture: value
+      trim_start: 0
+      trim_end: 0
+- name: variable
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: const
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: value
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: variable
+    role: Declaration
+    name_capture: name
+    regions:
+    - capture: value
+      trim_start: 0
+      trim_end: 0
+- name: uninitialized_variable
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: choice
+      alternatives:
+      - type: literal
+        text: let
+      - type: literal
+        text: var
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: identifier
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: variable
+    role: Declaration
+    name_capture: name
+- name: directive
+  pattern:
+    type: sequence
+    items:
+    - type: capture
+      name: name
+      item:
+        type: token
+        kind: string
+      join: ''
+    - type: optional
+      item:
+        type: literal
+        text: ;
+  projection:
+    ast_kind: statement
+    role: Container
+    name_capture: name
+    regions:
+    - capture: name
+      trim_start: 0
+      trim_end: 0
+- name: destructured_variable
+  pattern:
+    type: sequence
+    items:
+    - type: rule
+      name: prefix
+    - type: capture
+      name: name
+      item:
+        type: choice
+        alternatives:
+        - type: literal
+          text: const
+        - type: literal
+          text: let
+        - type: literal
+          text: var
+      join: ''
+    - type: capture
+      name: binding
+      item:
+        type: choice
+        alternatives:
+        - type: balanced
+          open: '['
+        - type: balanced
+          open: '{'
+      join: ''
+    - type: literal
+      text: '='
+    - type: capture
+      name: value
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: statement
+    role: Container
+    name_capture: name
+    regions:
+    - capture: binding
+      trim_start: 0
+      trim_end: 0
+    - capture: value
+      trim_start: 0
+      trim_end: 0
+- name: export_list
+  pattern:
+    type: sequence
+    items:
+    - type: capture
+      name: name
+      item:
+        type: literal
+        text: export
+      join: ''
+    - type: capture
+      name: value
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: statement
+    role: Container
+    name_capture: name
+    regions:
+    - capture: value
+      trim_start: 0
+      trim_end: 0
+- name: expression_statement
+  pattern:
+    type: sequence
+    items:
+    - type: capture
+      name: name
+      item:
+        type: choice
+        alternatives:
+        - type: token
+          kind: identifier
+        - type: literal
+          text: void
+        - type: literal
+          text: new
+        - type: literal
+          text: await
+      join: ''
+    - type: capture
+      name: value
+      item:
+        type: scan_until
+        stop:
+        - text: ;
+        - text: const
+          kind: keyword
+        - text: let
+          kind: keyword
+        - text: var
+          kind: keyword
+        - text: type
+          kind: keyword
+        - text: interface
+          kind: keyword
+        - text: enum
+          kind: keyword
+        - text: export
+          kind: keyword
+        - text: function
+          kind: keyword
+        - text: class
+          kind: keyword
+      join: ''
+    - type: literal
+      text: ;
+  projection:
+    ast_kind: statement
+    role: Container
+    name_capture: name
+    regions:
+    - capture: value
+      trim_start: 0
+      trim_end: 0

@@ -1,0 +1,32 @@
+schema_version: 1
+id: typescript
+version: 0.1.0
+extensions:
+- ts
+resolution:
+  literal:
+    mode: quoted
+    quotes:
+    - ''''
+    - '"'
+    escape: \
+    escapes: {}
+    escaped_quote: true
+    escaped_escape: true
+  routes:
+  - reject:
+    - '?'
+    - '#'
+    accept: ^\.{1,2}/
+    anchor: source_directory
+    rewrites: []
+    candidates:
+    - template: '{module}'
+      condition: always
+      priority: 0
+    - template: '{module}.{extension}'
+      condition: without_extension
+      priority: 1
+    - template: ./{module}/index.{extension}
+      condition: without_extension
+      priority: 1

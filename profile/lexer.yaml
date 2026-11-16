@@ -1,0 +1,183 @@
+schema_version: 5
+identifier_kind: identifier
+keywords:
+- abstract
+- as
+- async
+- class
+- const
+- declare
+- default
+- else
+- enum
+- export
+- extends
+- 'false'
+- from
+- function
+- if
+- implements
+- import
+- interface
+- let
+- namespace
+- new
+- 'null'
+- private
+- protected
+- public
+- readonly
+- return
+- static
+- 'true'
+- type
+- undefined
+- var
+- void
+- throw
+- yield
+tokens:
+- kind: regexp_literal
+  pattern: /(?:\\[^\r\n\u2028\u2029]|\[(?:\\[^\r\n\u2028\u2029]|[^\]\\\r\n\u2028\u2029])*\]|[^*/\[\\\r\n\u2028\u2029])(?:\\[^\r\n\u2028\u2029]|\[(?:\\[^\r\n\u2028\u2029]|[^\]\\\r\n\u2028\u2029])*\]|[^/\[\\\r\n\u2028\u2029])*/[dgimsuvy]*
+  after:
+  - text: '='
+  - text: (
+  - text: '['
+  - text: ','
+  - text: ':'
+  - text: =>
+  - text: '?'
+  - text: '&&'
+  - text: '||'
+  - text: ??
+  - text: ;
+  - text: '{'
+  - text: +
+  - text: '-'
+  - text: '*'
+  - text: '%'
+  - text: '&'
+  - text: '|'
+  - text: ^
+  - text: '~'
+  - text: '!'
+    kind: prefix_negation
+  at_start: true
+  reject_on_context_mismatch: true
+- kind: prefix_negation
+  pattern: '!'
+  after:
+  - text: '='
+  - text: (
+  - text: '['
+  - text: ','
+  - text: ':'
+  - text: =>
+  - text: '?'
+  - text: '&&'
+  - text: '||'
+  - text: ??
+  - text: ;
+  - text: '{'
+  - text: +
+  - text: '-'
+  - text: '*'
+  - text: '%'
+  - text: '&'
+  - text: '|'
+  - text: ^
+  - text: '~'
+  - text: '!'
+    kind: prefix_negation
+  at_start: true
+- kind: whitespace
+  pattern: \s+
+  trivia: true
+- kind: line_comment
+  pattern: //[^\r\n\u2028\u2029]*
+  trivia: true
+- kind: block_comment
+  pattern: /\*(?:[^*]|\*+[^*/])*\*+/
+  trivia: true
+- kind: string
+  pattern: '"(?:[^"\\\r\n]|\\[^\r\n])*"|''(?:[^''\\\r\n]|\\[^\r\n])*'''
+- kind: template
+  pattern: '`'
+  region: template
+- kind: number
+  pattern: (?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:[0-9][0-9_]*)(?:\.[0-9_]+)?(?:[eE][+-]?[0-9_]+)?)[n]?
+- kind: identifier
+  pattern: '[\p{L}_$][\p{L}\p{N}_$]*'
+- kind: operator
+  pattern: \?\.|\?\?=?|===|!==|>>>?=?|<<=?|==|!=|=>|<=|>=|\+\+|--|&&=?|\|\|=?|\*\*=?|[+*%=!<>?&|^~:/@#-]=?
+- kind: delimiter
+  pattern: '[(){}\[\],;.]'
+- kind: unterminated_comment
+  pattern: /\*
+  reject: true
+regions:
+  template:
+    close: '`'
+    escape: \
+    children:
+    - pattern: \$\{
+      region: code
+    token_kind: template
+    trivia: false
+  code:
+    close: '}'
+    children:
+    - pattern: \{
+      region: code
+    - pattern: '`'
+      region: template
+    - pattern: '"'
+      region: double_quote
+    - pattern: ''''
+      region: single_quote
+    - pattern: /\*
+      region: block_comment
+    - pattern: //
+      region: line_comment
+    token_rules:
+    - regexp_literal
+    - prefix_negation
+    - whitespace
+    - line_comment
+    - block_comment
+    - string
+    - template
+    - number
+    - identifier
+    - operator
+    - delimiter
+    - unterminated_comment
+  double_quote:
+    close: '"'
+    escape: \
+    token_kind: string
+    trivia: false
+  single_quote:
+    close: ''''
+    escape: \
+    token_kind: string
+    trivia: false
+  block_comment:
+    close: '*/'
+    token_kind: block_comment
+    trivia: true
+  line_comment:
+    close: '
+
+      '
+    eof_closes: true
+    alternate_closes:
+    - "\r\n"
+    - "\r"
+    - '       '
+    - '       '
+    token_kind: line_comment
+    trivia: true
+keyword_after_exclusions:
+- text: .
+- text: ?.

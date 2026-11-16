@@ -1,0 +1,15 @@
+schema_version: 7
+mappings:
+  function: Function
+  variable: Variable
+  class: Class
+  interface: Interface
+  enum: Enum
+  type_alias: TypeAlias
+  statement: Statement
+  module_import: Module
+  lexical_region: LexicalRegion
+reference_relations:
+  module_import:
+  - IMPORTS
+  - DEPENDS_ON
